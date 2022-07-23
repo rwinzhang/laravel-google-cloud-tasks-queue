@@ -6,6 +6,7 @@ use Google\Cloud\Tasks\V2\CloudTasksClient;
 use Google\Cloud\Tasks\V2\RetryConfig;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\Jobs\Job;
+use Illuminate\Queue\QueueManager;
 use Illuminate\Queue\WorkerOptions;
 use stdClass;
 use UnexpectedValueException;
@@ -58,10 +59,13 @@ class TaskHandler
          */
         $command = unserialize($task['data']['command']);
         $connection = $command->connection ?? config('queue.default');
-        $this->config = array_merge(
-            (array) config("queue.connections.{$connection}"),
-            ['connection' => $connection]
-        );
+        $baseConfig = config('queue.connections.' . $connection);
+        $config = (new CloudTasksConnector())->connect($baseConfig)->config;
+
+        // The connection name from the config may not be the actual connection name
+        $config['connection'] = $connection;
+
+        $this->config = $config;
     }
 
     private function setQueue(): void

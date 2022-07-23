@@ -67,7 +67,9 @@ class CloudTasksQueue extends LaravelQueue implements QueueContract
      */
     public function pushRaw($payload, $queue = null, array $options = [])
     {
-        $this->pushToCloudTasks($queue, $payload);
+        $delay = ! empty($options['delay']) ? $options['delay'] : 0;
+
+        $this->pushToCloudTasks($queue, $payload, $delay);
     }
 
     /**
@@ -177,6 +179,17 @@ class CloudTasksQueue extends LaravelQueue implements QueueContract
         );
 
         CloudTasksApi::deleteTask($taskName);
+    }
+
+    public function release(CloudTasksJob $job, int $delay = 0): void
+    {
+        $job->delete();
+
+        $payload = $job->getRawBody();
+
+        $options = ['delay' => $delay];
+
+        $this->pushRaw($payload, $job->getQueue(), $options);
     }
 
     private function createTask(): Task
